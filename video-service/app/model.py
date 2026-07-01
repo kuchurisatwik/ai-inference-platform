@@ -24,6 +24,9 @@ def load_model():
     if settings.model_backend == "mock":
         log.info("loading MOCK video backend (no GPU)")
         _pipeline = _MockPipeline()
+    elif settings.model_backend == "wan":
+        log.info("loading Wan 2.2 from %s", settings.model_path)
+        _pipeline = _load_wan()
     else:
         log.info("loading LTX from %s", settings.model_path)
         _pipeline = _load_ltx()
@@ -46,6 +49,24 @@ def _load_ltx():
 
     pipe = LTXPipeline.from_pretrained(
         settings.model_path, torch_dtype=torch.bfloat16
+    )
+    pipe = pipe.to("cuda")
+    return pipe
+
+
+def _load_wan():
+    """Load the Wan 2.2 TI2V-5B pipeline. Fits a 46 GB GPU with no CPU offload.
+
+    The VAE is loaded in float32 (Wan's recommendation); the rest in bfloat16.
+    """
+    import torch
+    from diffusers import WanPipeline, AutoencoderKLWan
+
+    vae = AutoencoderKLWan.from_pretrained(
+        settings.model_path, subfolder="vae", torch_dtype=torch.float32
+    )
+    pipe = WanPipeline.from_pretrained(
+        settings.model_path, vae=vae, torch_dtype=torch.bfloat16
     )
     pipe = pipe.to("cuda")
     return pipe
