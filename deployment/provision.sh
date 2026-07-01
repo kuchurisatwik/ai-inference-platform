@@ -82,7 +82,7 @@ if [[ "$SERVICE" == "image" ]]; then
               sentencepiece huggingface_hub
 else
   pip install diffusers transformers accelerate imageio imageio-ffmpeg \
-              huggingface_hub
+              sentencepiece huggingface_hub
 fi
 
 # ---- .env -----------------------------------------------------------------
