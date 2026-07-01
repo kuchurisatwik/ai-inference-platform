@@ -1,0 +1,24 @@
+# For local integration testing. In production each service runs on its own
+# EC2 instance, not together via compose.
+services:
+  image-service:
+    build:
+      context: .
+      dockerfile: image-service/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - image-service/.env.example
+    environment:
+      - MODEL_BACKEND=mock
+
+  video-service:
+    build:
+      context: .
+      dockerfile: video-service/Dockerfile
+    ports:
+      - "8001:8001"
+    env_file:
+      - video-service/.env.example
+    environment:
+      - MODEL_BACKEND=mock

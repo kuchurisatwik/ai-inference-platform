@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Environment / secrets
+.env
+*.env
+!.env.example
+
+# Model weights (downloaded on the server, never committed)
+/opt/models/
+models/
+*.safetensors
+*.bin
+*.ckpt
+*.pth
+
+# Generated output
+outputs/
+*.png
+*.jpg
+*.mp4
+!docs/**/*.png
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

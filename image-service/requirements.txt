@@ -1,0 +1,20 @@
+# --- API (needed everywhere, incl. local Windows dev) ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+Pillow==11.1.0
+
+# --- Storage (optional locally; used on EC2) ---
+boto3==1.35.90
+
+# --- Production server ---
+gunicorn==23.0.0
+
+# --- Real FLUX backend (install on the GPU EC2 box only) ---
+# torch            # match your CUDA version, install from pytorch.org
+# diffusers==0.32.1
+# transformers==4.47.1
+# accelerate==1.2.1
+# sentencepiece==0.2.0
