@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
 #
-# Phase 4 — Download model weights into /opt/models via the Hugging Face CLI.
+# Phase 4 — Download ONLY the diffusers-format model files into /opt/models.
 #
 #   Image server:  ./download_models.sh image   # FLUX.1 Schnell -> /opt/models/flux
 #   Video server:  ./download_models.sh video   # LTX-Video      -> /opt/models/ltx
 #
-# Gated/large repos may need a token:  huggingface-cli login   (or export HF_TOKEN)
+# These HF repos also ship huge standalone .safetensors checkpoints (LTX has
+# 13B files at ~28 GB each) that our diffusers pipeline does NOT use. We match
+# only files inside subfolders ("*/*" -> transformer/, vae/, text_encoder/,
+# tokenizer/, scheduler/) plus model_index.json, and skip the rest.
+#
+# Gated repos need a token first:  hf auth login   (or export HF_TOKEN)
 set -euo pipefail
 
 SERVICE="${1:?usage: download_models.sh <image|video>}"
+BASE="${BASE:-/opt/ai-platform}"
+REPO_DIR="${REPO_DIR:-$BASE/ai-inference-platform}"
 MODELS_DIR="${MODELS_DIR:-/opt/models}"
+PY="$REPO_DIR/${SERVICE}-service/venv/bin/python"   # use the service's venv
 
 # repo id -> local dir (override MODEL_REPO to pin a different checkpoint)
 if [[ "$SERVICE" == "image" ]]; then
@@ -25,13 +33,18 @@ fi
 sudo mkdir -p "$MODELS_DIR"
 sudo chown -R "$USER":"$USER" "$MODELS_DIR"
 
-# Use the CLI from the active venv if present, else pip-install it.
-if ! command -v huggingface-cli >/dev/null 2>&1; then
-  pip install huggingface_hub
-fi
-
-echo "==> Downloading $MODEL_REPO -> $TARGET"
-huggingface-cli download "$MODEL_REPO" --local-dir "$TARGET"
+echo "==> Downloading diffusers files of $MODEL_REPO -> $TARGET"
+"$PY" - "$MODEL_REPO" "$TARGET" <<'PY'
+import sys
+from huggingface_hub import snapshot_download
+repo, target = sys.argv[1], sys.argv[2]
+path = snapshot_download(
+    repo,
+    local_dir=target,
+    allow_patterns=["model_index.json", "*/*"],
+)
+print("downloaded to", path)
+PY
 
 echo "==> Done. Point MODEL_PATH at $TARGET in the service .env"
 du -sh "$TARGET" || true
