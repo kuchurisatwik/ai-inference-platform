@@ -22,6 +22,8 @@ def save_and_upload(image, prefix: str = "flux") -> str:
             bucket=settings.s3_bucket,
             region=settings.aws_region,
             public_base_url=settings.s3_public_base_url,
+            presign=settings.s3_presign,
+            expiry=settings.s3_url_expiry,
         )
     finally:
         # Always clean up the temp file, even if upload fails.

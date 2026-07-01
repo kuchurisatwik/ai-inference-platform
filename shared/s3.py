@@ -3,7 +3,6 @@
 Keeping this in one place means both services get identical upload behaviour and
 the same local-dev fallback (so you can test on Windows without AWS credentials).
 """
-import os
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -19,11 +18,15 @@ def upload_file(
     bucket: Optional[str] = None,
     region: Optional[str] = None,
     public_base_url: Optional[str] = None,
+    presign: bool = False,
+    expiry: int = 3600,
 ) -> str:
     """Upload ``local_path`` and return a URL to the stored object.
 
-    If ``bucket`` is falsy, falls back to copying the file into ./outputs and
-    returns a local file URL — handy for local development without AWS.
+    - No ``bucket``: copy into ./outputs and return a local file:// URL (dev).
+    - ``presign=True``: return a time-limited pre-signed GET URL (Phase 6).
+    - ``public_base_url``: return that CDN/base joined with the key.
+    - otherwise: return the plain virtual-hosted S3 URL.
     """
     if not bucket:
         return _save_local(local_path, key)
@@ -38,6 +41,13 @@ def upload_file(
     s3.upload_file(local_path, bucket, key)
     log.info("uploaded s3://%s/%s", bucket, key)
 
+    if presign:
+        url = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket, "Key": key},
+            ExpiresIn=expiry,
+        )
+        return url
     if public_base_url:
         return f"{public_base_url.rstrip('/')}/{key}"
     region_part = f"s3.{region}." if region else "s3."
@@ -46,8 +56,7 @@ def upload_file(
 
 def _save_local(local_path: str, key: str) -> str:
     """Copy the file into ./outputs/<key> and return a file:// URL."""
-    out_dir = Path("outputs")
-    dest = out_dir / key
+    dest = Path("outputs") / key
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(local_path, dest)
     url = dest.resolve().as_uri()

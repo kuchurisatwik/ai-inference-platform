@@ -24,6 +24,8 @@ def upload_and_cleanup(tmp_path: str, filename: str) -> str:
             bucket=settings.s3_bucket,
             region=settings.aws_region,
             public_base_url=settings.s3_public_base_url,
+            presign=settings.s3_presign,
+            expiry=settings.s3_url_expiry,
         )
     finally:
         if os.path.exists(tmp_path):

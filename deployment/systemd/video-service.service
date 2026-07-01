@@ -1,0 +1,27 @@
+# Phase 8 — run the video API as a managed service.
+# Install:
+#   sudo cp deployment/systemd/video-service.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now video-service
+#   sudo systemctl status video-service        # check
+#   journalctl -u video-service -f             # logs
+[Unit]
+Description=Video Service (LTX)
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/ai-platform/ai-inference-platform/video-service
+EnvironmentFile=/opt/ai-platform/ai-inference-platform/video-service/.env
+ExecStart=/opt/ai-platform/ai-inference-platform/video-service/venv/bin/gunicorn \
+    app.main:app \
+    -k uvicorn.workers.UvicornWorker \
+    -w 1 \
+    -b 127.0.0.1:8001 \
+    --timeout 600
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

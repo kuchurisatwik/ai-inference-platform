@@ -12,18 +12,25 @@ def generate_image(req: GenerateRequest) -> GenerateResponse:
     pipe = get_pipeline()
     log.info("generating image for prompt=%r", req.prompt)
 
-    image = pipe(
-        prompt=req.prompt,
-        negative_prompt=req.negative_prompt,
-        width=req.width,
-        height=req.height,
-        num_inference_steps=req.steps,
-        seed=req.seed,
-    )
-    # Real diffusers pipelines return an object with `.images`; the mock returns
-    # a PIL image directly. Normalise both.
-    if hasattr(image, "images"):
-        image = image.images[0]
+    if settings.model_backend == "mock":
+        image = pipe(prompt=req.prompt, width=req.width, height=req.height, seed=req.seed)
+    else:
+        import torch
+
+        # FLUX uses a torch.Generator for reproducibility, not a `seed` kwarg.
+        generator = None
+        if req.seed is not None:
+            generator = torch.Generator(device="cuda").manual_seed(req.seed)
+
+        result = pipe(
+            prompt=req.prompt,
+            width=req.width,
+            height=req.height,
+            num_inference_steps=req.steps,
+            guidance_scale=0.0,  # FLUX.1 Schnell is distilled; no CFG
+            generator=generator,
+        )
+        image = result.images[0]
 
     url = save_and_upload(image)
     return GenerateResponse(

@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     s3_bucket: str = ""
     s3_public_base_url: str = ""
+    s3_presign: bool = False       # return time-limited pre-signed URLs (Phase 6)
+    s3_url_expiry: int = 3600      # seconds
 
     output_folder: str = "outputs"
     log_level: str = "INFO"
