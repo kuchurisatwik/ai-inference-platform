@@ -67,8 +67,16 @@ def _load_flux():
             transformer=transformer,
             torch_dtype=torch.bfloat16,
         )
-        # Quantized transformer stays on GPU; offload the rest (T5) as needed.
-        pipe.enable_model_cpu_offload()
+        if settings.flux_cpu_offload:
+            # Only for very tight VRAM: slow (per-request CPU<->GPU transfers).
+            pipe.enable_model_cpu_offload()
+        else:
+            # nf4 transformer (~7GB) is already on the GPU; put the rest there
+            # too (~20GB total, fits a 24GB card) so there are NO slow per-
+            # request transfers. This is the fast path.
+            pipe.text_encoder.to("cuda")
+            pipe.text_encoder_2.to("cuda")
+            pipe.vae.to("cuda")
         pipe.vae.enable_tiling()
         return pipe
 

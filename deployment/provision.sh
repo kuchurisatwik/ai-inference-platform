@@ -80,6 +80,7 @@ pip install -r requirements.txt
 # sentencepiece + protobuf are needed by the T5 tokenizer used by both FLUX
 # and LTX (transformers rebuilds the slow tokenizer at load time).
 if [[ "$SERVICE" == "image" ]]; then
+  pip install torchvision --index-url "$TORCH_INDEX"
   pip install diffusers transformers accelerate safetensors \
               sentencepiece protobuf huggingface_hub bitsandbytes
 else

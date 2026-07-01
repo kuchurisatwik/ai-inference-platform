@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # 4-bit (nf4) quantize the FLUX transformer so it fits a 24GB GPU (L4).
     # Set false on a big GPU to run full bf16.
     flux_quantize: bool = True
+    # Offload to CPU during denoise. Slow (per-request transfers) — only turn on
+    # if quantized FLUX still won't fit VRAM. Off keeps it all on the GPU (fast).
+    flux_cpu_offload: bool = False
 
     # Storage — leave s3_bucket empty for local ./outputs fallback
     aws_region: str = "us-east-1"
