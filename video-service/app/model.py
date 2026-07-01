@@ -68,7 +68,12 @@ def _load_wan():
     pipe = WanPipeline.from_pretrained(
         settings.model_path, vae=vae, torch_dtype=torch.bfloat16
     )
-    pipe = pipe.to("cuda")
+    # Fit 720p generation on a 46 GB GPU:
+    #  - offload idle components (the 11 GB text encoder) to CPU during denoise
+    #  - tile/slice the VAE decode so it doesn't spike on many frames
+    pipe.enable_model_cpu_offload()
+    pipe.vae.enable_tiling()
+    pipe.vae.enable_slicing()
     return pipe
 
 

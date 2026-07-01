@@ -1,6 +1,10 @@
 """Configuration for the video service, loaded from environment / .env."""
+import os
 import sys
 from pathlib import Path
+
+# Reduce CUDA memory fragmentation (must be set before torch initialises CUDA).
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
