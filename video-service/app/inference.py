@@ -23,15 +23,32 @@ def generate_video(req: GenerateRequest) -> GenerateResponse:
         )
     else:
         # Real LTX pipeline: produce frames, then encode to mp4.
+        import torch
         from diffusers.utils import export_to_video
+
+        generator = None
+        if req.seed is not None:
+            generator = torch.Generator(device="cuda").manual_seed(req.seed)
+
+        # A default negative prompt noticeably cleans up LTX output.
+        negative = req.negative_prompt or (
+            "worst quality, inconsistent motion, blurry, jittery, distorted, "
+            "low quality, artifacts, warped"
+        )
 
         result = pipe(
             prompt=req.prompt,
-            negative_prompt=req.negative_prompt,
+            negative_prompt=negative,
             width=req.width,
             height=req.height,
             num_frames=req.num_frames,
             num_inference_steps=req.steps,
+            guidance_scale=req.guidance_scale,
+            # These two control the VAE decode and remove the coloured
+            # streak/shimmer artifacts. LTX-recommended values.
+            decode_timestep=0.03,
+            decode_noise_scale=0.025,
+            generator=generator,
         )
         export_to_video(result.frames[0], tmp_path, fps=req.fps)
 
