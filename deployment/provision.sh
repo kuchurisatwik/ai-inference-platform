@@ -77,12 +77,14 @@ pip install -r requirements.txt
 
 # The heavy model libs are commented out in requirements.txt so local Windows
 # dev stays light. Install them here on the GPU box.
+# sentencepiece + protobuf are needed by the T5 tokenizer used by both FLUX
+# and LTX (transformers rebuilds the slow tokenizer at load time).
 if [[ "$SERVICE" == "image" ]]; then
   pip install diffusers transformers accelerate safetensors \
-              sentencepiece huggingface_hub
+              sentencepiece protobuf huggingface_hub
 else
   pip install diffusers transformers accelerate imageio imageio-ffmpeg \
-              sentencepiece huggingface_hub
+              sentencepiece protobuf huggingface_hub
 fi
 
 # ---- .env -----------------------------------------------------------------
