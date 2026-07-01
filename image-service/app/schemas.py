@@ -7,7 +7,7 @@ class GenerateRequest(BaseModel):
     negative_prompt: str = Field("", examples=["blurry, low quality"])
     width: int = Field(1024, ge=256, le=2048)
     height: int = Field(1024, ge=256, le=2048)
-    steps: int = Field(28, ge=1, le=100)
+    steps: int = Field(4, ge=1, le=100)  # FLUX.1-schnell is distilled to ~4 steps
     seed: int | None = Field(None, description="Set for reproducible output")
 
 

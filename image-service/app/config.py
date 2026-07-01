@@ -1,6 +1,10 @@
 """Configuration for the image service, loaded from environment / .env."""
+import os
 import sys
 from pathlib import Path
+
+# Reduce CUDA memory fragmentation (must be set before torch initialises CUDA).
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 # Make the repo root importable so `from shared import ...` works both locally
 # (uvicorn app.main:app) and inside Docker.
@@ -17,6 +21,9 @@ class Settings(BaseSettings):
     # "mock" (default, no GPU) or "flux" (real model on the GPU box)
     model_backend: str = "mock"
     model_path: str = "/opt/models/flux"
+    # 4-bit (nf4) quantize the FLUX transformer so it fits a 24GB GPU (L4).
+    # Set false on a big GPU to run full bf16.
+    flux_quantize: bool = True
 
     # Storage — leave s3_bucket empty for local ./outputs fallback
     aws_region: str = "us-east-1"

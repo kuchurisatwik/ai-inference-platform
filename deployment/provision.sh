@@ -81,7 +81,7 @@ pip install -r requirements.txt
 # and LTX (transformers rebuilds the slow tokenizer at load time).
 if [[ "$SERVICE" == "image" ]]; then
   pip install diffusers transformers accelerate safetensors \
-              sentencepiece protobuf huggingface_hub
+              sentencepiece protobuf huggingface_hub bitsandbytes
 else
   pip install diffusers transformers accelerate imageio imageio-ffmpeg \
               sentencepiece protobuf huggingface_hub

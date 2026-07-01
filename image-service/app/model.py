@@ -40,9 +40,37 @@ def is_loaded() -> bool:
 
 
 def _load_flux():
-    """Load the real FLUX pipeline. Requires torch + diffusers + a GPU."""
+    """Load FLUX. On a small GPU (e.g. L4 24GB) the 12B transformer is loaded
+    in 4-bit (nf4) so it fits; on a big GPU set FLUX_QUANTIZE=false for full
+    bf16. CPU offload keeps the T5 encoder off the GPU during denoise.
+    """
     import torch
     from diffusers import FluxPipeline
+
+    if settings.flux_quantize:
+        from diffusers import FluxTransformer2DModel, BitsAndBytesConfig
+
+        nf4 = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+        log.info("loading FLUX transformer in 4-bit (nf4)")
+        transformer = FluxTransformer2DModel.from_pretrained(
+            settings.model_path,
+            subfolder="transformer",
+            quantization_config=nf4,
+            torch_dtype=torch.bfloat16,
+        )
+        pipe = FluxPipeline.from_pretrained(
+            settings.model_path,
+            transformer=transformer,
+            torch_dtype=torch.bfloat16,
+        )
+        # Quantized transformer stays on GPU; offload the rest (T5) as needed.
+        pipe.enable_model_cpu_offload()
+        pipe.vae.enable_tiling()
+        return pipe
 
     pipe = FluxPipeline.from_pretrained(
         settings.model_path, torch_dtype=torch.bfloat16
