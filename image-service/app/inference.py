@@ -34,7 +34,7 @@ def generate_image(req: GenerateRequest) -> GenerateResponse:
                 width=req.width,
                 height=req.height,
                 num_inference_steps=req.steps,
-                guidance_scale=0.0,  # FLUX.1 Schnell is distilled; no CFG
+                guidance_scale=req.guidance_scale,  # schnell: 0.0 (no CFG); dev: ~3.5
                 generator=generator,
             )
             image = result.images[0]

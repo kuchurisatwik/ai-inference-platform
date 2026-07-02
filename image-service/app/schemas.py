@@ -8,6 +8,8 @@ class GenerateRequest(BaseModel):
     width: int = Field(1024, ge=256, le=2048)
     height: int = Field(1024, ge=256, le=2048)
     steps: int = Field(4, ge=1, le=100)  # FLUX.1-schnell is distilled to ~4 steps
+    guidance_scale: float = Field(0.0, ge=0.0, le=10.0,
+                                  description="schnell uses 0.0 (no CFG); FLUX.1-dev uses ~3.5")
     seed: int | None = Field(None, description="Set for reproducible output")
 
 
