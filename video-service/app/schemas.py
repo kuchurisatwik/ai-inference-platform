@@ -13,6 +13,11 @@ class GenerateRequest(BaseModel):
     guidance_scale: float = Field(3.0, ge=1.0, le=10.0,
                                   description="How strongly to follow the prompt; 3-4 is the LTX sweet spot")
     seed: int | None = Field(None, description="Set for reproducible output")
+    image: str | None = Field(
+        None,
+        description="Optional input image (base64 data URL or http URL). If set, "
+                    "Wan runs image-to-video (image + prompt); ignored by LTX.",
+    )
 
 
 class GenerateResponse(BaseModel):

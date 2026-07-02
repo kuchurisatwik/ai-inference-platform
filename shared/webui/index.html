@@ -82,6 +82,9 @@
         <div><label>Guidance</label><input id="v_guidance" type="number" step="0.1" value="5" /></div>
       </div>
       <label>Seed (blank = random)</label><input id="v_seed" type="number" placeholder="random" />
+      <label>Input image (optional → image-to-video)</label>
+      <input id="v_image" type="file" accept="image/*" />
+      <div class="hint">Add an image to animate it (image→video). Leave empty for text→video.</div>
     </div>
 
     <button class="go" id="go" onclick="generate()">Generate</button>
@@ -118,20 +121,27 @@
 
   function num(id){ const v = document.getElementById(id).value; return v==="" ? null : Number(v); }
 
-  function body(){
+  function fileToDataURL(file){
+    return new Promise((res, rej)=>{ const r = new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); });
+  }
+
+  async function body(){
     const prompt = document.getElementById("prompt").value.trim();
     if (mode==="image"){
       return { prompt, width:num("i_width"), height:num("i_height"),
                steps:num("i_steps"), guidance_scale:num("i_guidance"), seed:num("i_seed") };
     }
-    return { prompt, width:num("v_width"), height:num("v_height"),
-             num_frames:num("v_frames"), fps:num("v_fps"), steps:num("v_steps"),
-             guidance_scale:num("v_guidance"), seed:num("v_seed") };
+    const b = { prompt, width:num("v_width"), height:num("v_height"),
+                num_frames:num("v_frames"), fps:num("v_fps"), steps:num("v_steps"),
+                guidance_scale:num("v_guidance"), seed:num("v_seed") };
+    const f = document.getElementById("v_image").files[0];
+    if (f) b.image = await fileToDataURL(f);   // enables image-to-video
+    return b;
   }
 
   async function generate(){
-    const b = body();
-    if (!b.prompt){ show('<span class="err">Please enter a prompt.</span>'); return; }
+    const b = await body();
+    if (!b.prompt && !b.image){ show('<span class="err">Please enter a prompt (or add an image).</span>'); return; }
     const base = api(mode);
     const go = document.getElementById("go");
     go.disabled = true;

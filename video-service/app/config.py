@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     # "mock" (default, no GPU) or "ltx" (real model on the GPU box)
     model_backend: str = "mock"
     model_path: str = "/opt/models/ltx"
+    # Wan: offload to CPU during denoise (slower). Off = all on GPU (needs ~48GB).
+    wan_cpu_offload: bool = False
 
     aws_region: str = "us-east-1"
     s3_bucket: str = ""

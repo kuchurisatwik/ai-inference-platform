@@ -55,26 +55,35 @@ def _load_ltx():
 
 
 def _load_wan():
-    """Load the Wan 2.2 TI2V-5B pipeline. Fits a 46 GB GPU with no CPU offload.
+    """Load Wan 2.2 TI2V-5B for BOTH text-to-video and image-to-video.
+
+    One set of weights serves both: the image-to-video pipeline is built from
+    the text-to-video one via `from_pipe`, so it costs no extra VRAM. Returns a
+    dict {"t2v": WanPipeline, "i2v": WanImageToVideoPipeline}.
 
     The VAE is loaded in float32 (Wan's recommendation); the rest in bfloat16.
     """
     import torch
-    from diffusers import WanPipeline, AutoencoderKLWan
+    from diffusers import WanPipeline, WanImageToVideoPipeline, AutoencoderKLWan
 
     vae = AutoencoderKLWan.from_pretrained(
         settings.model_path, subfolder="vae", torch_dtype=torch.float32
     )
-    pipe = WanPipeline.from_pretrained(
+    t2v = WanPipeline.from_pretrained(
         settings.model_path, vae=vae, torch_dtype=torch.bfloat16
     )
-    # Fit 720p generation on a 46 GB GPU:
-    #  - offload idle components (the 11 GB text encoder) to CPU during denoise
-    #  - tile/slice the VAE decode so it doesn't spike on many frames
-    pipe.enable_model_cpu_offload()
-    pipe.vae.enable_tiling()
-    pipe.vae.enable_slicing()
-    return pipe
+    if settings.wan_cpu_offload:
+        # Fallback for tight VRAM: offload idle components to CPU (slower).
+        t2v.enable_model_cpu_offload()
+    else:
+        t2v.to("cuda")
+    # Tile/slice the VAE decode so it doesn't spike on many frames.
+    t2v.vae.enable_tiling()
+    t2v.vae.enable_slicing()
+
+    # Image-to-video shares the SAME weights — no extra VRAM.
+    i2v = WanImageToVideoPipeline.from_pipe(t2v)
+    return {"t2v": t2v, "i2v": i2v}
 
 
 class _MockPipeline:

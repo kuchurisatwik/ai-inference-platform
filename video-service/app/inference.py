@@ -1,4 +1,7 @@
-"""Inference logic: prompt in -> video generated -> uploaded -> URL out."""
+"""Inference logic: prompt (+ optional image) -> video -> uploaded -> URL out."""
+import base64
+import io
+import math
 import threading
 
 from app.config import settings
@@ -13,10 +16,15 @@ log = get_logger("video.inference")
 # here (queue up) instead of running simultaneously and crashing with OOM.
 _gpu_lock = threading.Lock()
 
+_DEFAULT_NEGATIVE = (
+    "worst quality, inconsistent motion, blurry, jittery, distorted, "
+    "low quality, artifacts, warped, overexposed, static"
+)
+
 
 def generate_video(req: GenerateRequest) -> GenerateResponse:
     pipe = get_pipeline()
-    log.info("generating video for prompt=%r", req.prompt)
+    log.info("generating video prompt=%r image=%s", req.prompt, bool(req.image))
 
     tmp_path, filename = make_temp_path()
 
@@ -29,7 +37,6 @@ def generate_video(req: GenerateRequest) -> GenerateResponse:
                 fps=req.fps,
             )
         else:
-            # Real pipeline (LTX or Wan): produce frames, then encode to mp4.
             import torch
             from diffusers.utils import export_to_video
 
@@ -37,29 +44,23 @@ def generate_video(req: GenerateRequest) -> GenerateResponse:
             if req.seed is not None:
                 generator = torch.Generator(device="cuda").manual_seed(req.seed)
 
-            # A default negative prompt noticeably cleans up output.
-            negative = req.negative_prompt or (
-                "worst quality, inconsistent motion, blurry, jittery, distorted, "
-                "low quality, artifacts, warped, overexposed, static"
-            )
-
-            common = dict(
-                prompt=req.prompt,
-                negative_prompt=negative,
-                width=req.width,
-                height=req.height,
-                num_frames=req.num_frames,
-                num_inference_steps=req.steps,
-                guidance_scale=req.guidance_scale,
-                generator=generator,
-            )
+            negative = req.negative_prompt or _DEFAULT_NEGATIVE
 
             if settings.model_backend == "wan":
-                result = pipe(**common)
-            else:  # ltx
-                # decode_timestep/decode_noise_scale control the LTX VAE decode
-                # and remove the coloured streak/shimmer artifacts. LTX default.
-                result = pipe(**common, decode_timestep=0.03, decode_noise_scale=0.025)
+                result = _run_wan(pipe, req, negative, generator)
+            else:  # ltx (text-to-video only)
+                result = pipe(
+                    prompt=req.prompt,
+                    negative_prompt=negative,
+                    width=req.width,
+                    height=req.height,
+                    num_frames=req.num_frames,
+                    num_inference_steps=req.steps,
+                    guidance_scale=req.guidance_scale,
+                    generator=generator,
+                    decode_timestep=0.03,
+                    decode_noise_scale=0.025,
+                )
 
             export_to_video(result.frames[0], tmp_path, fps=req.fps)
 
@@ -72,3 +73,47 @@ def generate_video(req: GenerateRequest) -> GenerateResponse:
         seed=req.seed,
         backend=settings.model_backend,
     )
+
+
+def _run_wan(pipes, req, negative, generator):
+    """Wan: route to text-to-video or image-to-video (both share one model)."""
+    common = dict(
+        prompt=req.prompt,
+        negative_prompt=negative,
+        num_frames=req.num_frames,
+        num_inference_steps=req.steps,
+        guidance_scale=req.guidance_scale,
+        generator=generator,
+    )
+    if req.image:
+        pipe = pipes["i2v"]
+        image = _decode_image(req.image)
+        height, width = _wan_size(pipe, image, req.width * req.height)
+        image = image.resize((width, height))
+        log.info("image-to-video at %dx%d", width, height)
+        return pipe(image=image, height=height, width=width, **common)
+
+    pipe = pipes["t2v"]
+    return pipe(width=req.width, height=req.height, **common)
+
+
+def _wan_size(pipe, image, max_area):
+    """Height/width matching the image aspect ratio, snapped to the model grid."""
+    aspect = image.height / image.width
+    mod = pipe.vae_scale_factor_spatial * pipe.transformer.config.patch_size[1]
+    height = int(round(math.sqrt(max_area * aspect)) // mod * mod)
+    width = int(round(math.sqrt(max_area / aspect)) // mod * mod)
+    return height, width
+
+
+def _decode_image(src: str):
+    """Load a PIL image from a base64 data URL, raw base64, or an http(s) URL."""
+    from PIL import Image
+
+    if src.startswith("http://") or src.startswith("https://"):
+        from diffusers.utils import load_image
+
+        return load_image(src).convert("RGB")
+    if src.startswith("data:"):
+        src = src.split(",", 1)[1]
+    return Image.open(io.BytesIO(base64.b64decode(src))).convert("RGB")
