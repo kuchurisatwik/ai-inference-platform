@@ -1,10 +1,10 @@
-# Phase 8 — run the image API as a managed service.
+# Phase 8 — run the image API as a managed background service.
 # Install:
 #   sudo cp deployment/systemd/image-service.service /etc/systemd/system/
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now image-service
 #   sudo systemctl status image-service        # check
-#   journalctl -u image-service -f             # logs
+#   journalctl -u image-service -f             # live logs (watch for "model ready")
 [Unit]
 Description=Image Service (FLUX)
 After=network.target
@@ -14,14 +14,12 @@ User=ubuntu
 Group=ubuntu
 WorkingDirectory=/opt/ai-platform/ai-inference-platform/image-service
 EnvironmentFile=/opt/ai-platform/ai-inference-platform/image-service/.env
-ExecStart=/opt/ai-platform/ai-inference-platform/image-service/venv/bin/gunicorn \
-    app.main:app \
-    -k uvicorn.workers.UvicornWorker \
-    -w 1 \
-    -b 127.0.0.1:8000 \
-    --timeout 300
+ExecStart=/opt/ai-platform/ai-inference-platform/image-service/venv/bin/uvicorn \
+    app.main:app --host 127.0.0.1 --port 8000
 Restart=always
-RestartSec=5
+RestartSec=10
+# The model loads for ~1-2 min on boot; don't let systemd think it hung.
+TimeoutStartSec=0
 
 [Install]
 WantedBy=multi-user.target
