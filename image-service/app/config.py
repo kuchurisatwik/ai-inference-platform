@@ -38,5 +38,12 @@ class Settings(BaseSettings):
     output_folder: str = "outputs"
     log_level: str = "INFO"
 
+    # Comma-separated API keys required in the X-API-Key header. Empty = no auth.
+    api_keys: str = ""
+
+    @property
+    def api_key_set(self) -> set[str]:
+        return {k.strip() for k in self.api_keys.split(",") if k.strip()}
+
 
 settings = Settings()

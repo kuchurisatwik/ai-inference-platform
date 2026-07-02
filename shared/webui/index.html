@@ -44,6 +44,7 @@
   <div class="settings">
     <span>Image API</span><input id="imageApi" placeholder="http://IMAGE_IP" />
     <span>Video API</span><input id="videoApi" placeholder="http://VIDEO_IP" />
+    <span>API Key</span><input id="apiKey" type="password" placeholder="X-API-Key" style="width:130px" />
   </div>
 </header>
 
@@ -110,6 +111,9 @@
       el.value = localStorage.getItem(k) || location.origin;
       el.addEventListener("change", ()=> localStorage.setItem(k, el.value));
     }
+    const key = document.getElementById("apiKey");
+    key.value = localStorage.getItem("apiKey") || "";
+    key.addEventListener("change", ()=> localStorage.setItem("apiKey", key.value));
   }
 
   function num(id){ const v = document.getElementById(id).value; return v==="" ? null : Number(v); }
@@ -134,8 +138,11 @@
     const t0 = performance.now();
     show('<div class="spinner"></div><div class="meta">Generating '+mode+'… this can take a while.</div>');
     try {
+      const headers = {"Content-Type":"application/json"};
+      const key = document.getElementById("apiKey").value.trim();
+      if (key) headers["X-API-Key"] = key;
       const res = await fetch(base + "/generate", {
-        method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(b)
+        method:"POST", headers, body:JSON.stringify(b)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
