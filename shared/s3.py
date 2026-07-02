@@ -55,10 +55,13 @@ def upload_file(
 
 
 def _save_local(local_path: str, key: str) -> str:
-    """Copy the file into ./outputs/<key> and return a file:// URL."""
+    """Copy the file into ./outputs/<key> and return an HTTP path served by the
+    app at /outputs/<key> (the web UI turns this into a full URL). Falls back to
+    a plain relative path so callers behind nginx get a browser-loadable link.
+    """
     dest = Path("outputs") / key
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(local_path, dest)
-    url = dest.resolve().as_uri()
-    log.info("saved locally at %s", url)
+    url = f"/outputs/{key}"
+    log.info("saved locally, served at %s", url)
     return url
