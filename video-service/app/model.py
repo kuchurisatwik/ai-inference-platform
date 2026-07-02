@@ -72,6 +72,12 @@ def _load_wan():
     t2v = WanPipeline.from_pretrained(
         settings.model_path, vae=vae, torch_dtype=torch.bfloat16
     )
+    # Force the big components to bf16. Some Wan checkpoints otherwise load the
+    # transformer/text-encoder in fp32, which nearly fills a 48GB GPU by itself
+    # (~44GB) and leaves no room to generate. bf16 halves that to ~24GB.
+    t2v.transformer.to(torch.bfloat16)
+    t2v.text_encoder.to(torch.bfloat16)
+
     if settings.wan_cpu_offload:
         # Fallback for tight VRAM: offload idle components to CPU (slower).
         t2v.enable_model_cpu_offload()
@@ -83,6 +89,10 @@ def _load_wan():
 
     # Image-to-video shares the SAME weights — no extra VRAM.
     i2v = WanImageToVideoPipeline.from_pipe(t2v)
+
+    if torch.cuda.is_available():
+        log.info("Wan loaded; GPU memory ~%.1f GB",
+                 torch.cuda.memory_allocated() / 1e9)
     return {"t2v": t2v, "i2v": i2v}
 
 
