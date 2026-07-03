@@ -87,6 +87,11 @@ def _run_wan(pipes, req, negative, generator):
     )
     if req.image:
         pipe = pipes["i2v"]
+        if pipe is None:
+            raise RuntimeError(
+                "image-to-video is not available for this model "
+                "(the 14B T2V model is text-to-video only; use the 5B TI2V model)"
+            )
         image = _decode_image(req.image)
         height, width = _wan_size(pipe, image, req.width * req.height)
         image = image.resize((width, height))

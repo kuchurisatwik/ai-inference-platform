@@ -89,12 +89,15 @@ def _load_wan():
 
     # Image-to-video must reuse the SAME weight objects (no extra VRAM).
     # Constructing from t2v.components shares them; from_pipe was duplicating
-    # the transformer + text encoder (~21GB extra).
-    try:
-        i2v = WanImageToVideoPipeline(**t2v.components)
-    except Exception as exc:  # noqa: BLE001
-        log.warning("i2v via components failed (%s); falling back to from_pipe", exc)
-        i2v = WanImageToVideoPipeline.from_pipe(t2v)
+    # the transformer + text encoder (~21GB extra). Skipped for the 14B T2V
+    # model, which has no image-to-video components.
+    i2v = None
+    if settings.wan_i2v:
+        try:
+            i2v = WanImageToVideoPipeline(**t2v.components)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("i2v via components failed (%s); falling back to from_pipe", exc)
+            i2v = WanImageToVideoPipeline.from_pipe(t2v)
 
     if torch.cuda.is_available():
         log.info("Wan loaded; GPU memory ~%.1f GB",

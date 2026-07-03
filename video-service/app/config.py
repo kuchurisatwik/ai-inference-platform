@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     model_path: str = "/opt/models/ltx"
     # Wan: offload to CPU during denoise (slower). Off = all on GPU (needs ~48GB).
     wan_cpu_offload: bool = False
+    # Build the image-to-video pipeline. True for the 5B TI2V model; set false
+    # for the 14B T2V-A14B model (text-to-video only, no i2v components).
+    wan_i2v: bool = True
 
     aws_region: str = "us-east-1"
     s3_bucket: str = ""
