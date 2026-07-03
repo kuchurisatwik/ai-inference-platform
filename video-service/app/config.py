@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     # Build the image-to-video pipeline. True for the 5B TI2V model; set false
     # for the 14B T2V-A14B model (text-to-video only, no i2v components).
     wan_i2v: bool = True
+    # HunyuanVideo 1.5: offload to CPU (default off — it fits ~24-28GB on a 48GB
+    # GPU, so all-on-GPU is faster).
+    hunyuan_cpu_offload: bool = False
 
     aws_region: str = "us-east-1"
     s3_bucket: str = ""

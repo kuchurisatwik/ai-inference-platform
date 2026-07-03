@@ -48,6 +48,17 @@ def generate_video(req: GenerateRequest) -> GenerateResponse:
 
             if settings.model_backend == "wan":
                 result = _run_wan(pipe, req, negative, generator)
+            elif settings.model_backend == "hunyuan":
+                result = pipe(
+                    prompt=req.prompt,
+                    negative_prompt=negative,
+                    width=req.width,
+                    height=req.height,
+                    num_frames=req.num_frames,
+                    num_inference_steps=req.steps,
+                    guidance_scale=req.guidance_scale,
+                    generator=generator,
+                )
             else:  # ltx (text-to-video only)
                 result = pipe(
                     prompt=req.prompt,

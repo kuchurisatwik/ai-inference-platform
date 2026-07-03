@@ -27,6 +27,9 @@ def load_model():
     elif settings.model_backend == "wan":
         log.info("loading Wan 2.2 from %s", settings.model_path)
         _pipeline = _load_wan()
+    elif settings.model_backend == "hunyuan":
+        log.info("loading HunyuanVideo 1.5 from %s", settings.model_path)
+        _pipeline = _load_hunyuan()
     else:
         log.info("loading LTX from %s", settings.model_path)
         _pipeline = _load_ltx()
@@ -103,6 +106,30 @@ def _load_wan():
         log.info("Wan loaded; GPU memory ~%.1f GB",
                  torch.cuda.memory_allocated() / 1e9)
     return {"t2v": t2v, "i2v": i2v}
+
+
+def _load_hunyuan():
+    """Load HunyuanVideo 1.5 (8.3B). At bf16 it fits a 48GB GPU (~24-28GB) with
+    no offload, so it runs fully on the GPU by default (fast). VAE tiled to keep
+    decode memory down. Text-to-video only.
+    """
+    import torch
+    from diffusers import HunyuanVideo15Pipeline
+
+    pipe = HunyuanVideo15Pipeline.from_pretrained(
+        settings.model_path, torch_dtype=torch.bfloat16
+    )
+    if settings.hunyuan_cpu_offload:
+        pipe.enable_model_cpu_offload()
+    else:
+        pipe.to("cuda")
+    pipe.vae.enable_tiling()
+    pipe.vae.enable_slicing()
+
+    if torch.cuda.is_available():
+        log.info("HunyuanVideo 1.5 loaded; GPU memory ~%.1f GB",
+                 torch.cuda.memory_allocated() / 1e9)
+    return pipe
 
 
 class _MockPipeline:
